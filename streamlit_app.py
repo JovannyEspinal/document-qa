@@ -55,7 +55,7 @@ else:
 
         try:
             llm = ChatOpenAI(
-                "gpt-5-nano",
+                model="gpt-5-nano",
                 temperature=None,
                 api_key=openai_api_key
             )
