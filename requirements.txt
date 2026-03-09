@@ -1,6 +1,6 @@
 streamlit
-langchain
-langchain-openai
-langchain-experimental
+langchain==0.3.25
+langchain-openai==0.2.14
+langchain-experimental==0.3.4
 pandas
 requests==2.32.4
