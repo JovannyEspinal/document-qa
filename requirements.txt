@@ -1,4 +1,5 @@
 streamlit
+tabulate
 langchain==0.3.25
 langchain-openai==0.2.14
 langchain-experimental==0.3.4
