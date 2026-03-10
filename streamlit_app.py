@@ -31,6 +31,38 @@ show_title_and_description()
 # via `st.secrets`, see https://docs.streamlit.io/develop/concepts/connections/secrets-management
 openai_api_key = st.text_input("OpenAI API Key", type="password")
 
+
+def open_ai_df_agent(openai_api_key, dataframes):
+    try:
+        llm = ChatOpenAI(
+            model="gpt-5-nano",
+            temperature=1,
+            api_key=openai_api_key
+        )
+
+        agent = create_pandas_dataframe_agent(
+            llm,
+            dataframes,
+            agent_type="openai-functions",
+            verbose=True,
+            allow_dangerous_code=True
+        )
+
+        return agent
+    except Exception as e:
+        st.error(f"Error creating agent: {e}")
+        st.stop()
+
+
+def generate_answer_stream(agent, final_query):
+    try:
+        stream = agent.invoke(final_query)['output']
+        return stream
+    except Exception as e:
+        st.error(f"Error generating answer: {e}")
+        st.stop()
+
+
 if not openai_api_key:
     st.info("Please add your OpenAI API key to continue.", icon="🗝️")
 else:
@@ -58,34 +90,12 @@ else:
     """
 
     if uploaded_files and question:
-
-        try:
-            llm = ChatOpenAI(
-                model="gpt-5-nano",
-                temperature=1,
-                api_key=openai_api_key
-            )
-
-            agent = create_pandas_dataframe_agent(
-                llm,
-                dataframes,
-                agent_type="openai-functions",
-                verbose=True,
-                allow_dangerous_code=True
-            )
-        except Exception as e:
-            st.error(f"Error creating agent: {e}")
-            st.stop()
+        agent = open_ai_df_agent(openai_api_key, dataframes)
 
         final_query = system_prompt + "\n\nQuestion: " + question
 
-
         # Generate an answer using the OpenAI API.
-        try:
-            stream = agent.invoke(final_query)['output']
-        except Exception as e:
-            st.error(f"Error generating answer: {e}")
-            st.stop()
+        stream = generate_answer_stream(agent, final_query)
 
         # Stream the response to the app using `st.write_stream`.
         st.write(stream)
