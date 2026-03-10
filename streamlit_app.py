@@ -1,7 +1,8 @@
-import pandas as pd
 import streamlit as st
-from langchain_openai.chat_models import ChatOpenAI
-from langchain_experimental.agents.agent_toolkits import create_pandas_dataframe_agent
+
+from agent import open_ai_df_agent, invoke_agent
+from data import dataframe_from_uploaded_files
+from config import SYSTEM_PROMPT
 
 def show_title_and_description():
     st.title("📄 CSV FAQ Agent")
@@ -10,58 +11,10 @@ def show_title_and_description():
         "To use this app, you need to provide an OpenAI API key, which you can get [here](https://platform.openai.com/account/api-keys). "
     )
 
-def dataframe_from_uploaded_files(uploaded_files):
-    dataframes = []
-    if uploaded_files:
-        try:
-            for file in uploaded_files:
-                df = pd.read_csv(file)
-                dataframes.append(df)
-            print(f"\SUCCESS: Loaded '{file}' ({len(df)} rows)")
-        except Exception as e:
-            st.error(f"Error reading CSV files: {e}")
-            st.stop()
-    return dataframes
 
-# Show title and description.
 show_title_and_description()
 
-# Ask user for their OpenAI API key via `st.text_input`.
-# Alternatively, you can store the API key in `./.streamlit/secrets.toml` and access it
-# via `st.secrets`, see https://docs.streamlit.io/develop/concepts/connections/secrets-management
 openai_api_key = st.text_input("OpenAI API Key", type="password")
-
-
-def open_ai_df_agent(openai_api_key, dataframes):
-    try:
-        llm = ChatOpenAI(
-            model="gpt-5-nano",
-            temperature=1,
-            api_key=openai_api_key
-        )
-
-        agent = create_pandas_dataframe_agent(
-            llm,
-            dataframes,
-            agent_type="openai-functions",
-            verbose=True,
-            allow_dangerous_code=True
-        )
-
-        return agent
-    except Exception as e:
-        st.error(f"Error creating agent: {e}")
-        st.stop()
-
-
-def generate_answer_stream(agent, final_query):
-    try:
-        stream = agent.invoke(final_query)['output']
-        return stream
-    except Exception as e:
-        st.error(f"Error generating answer: {e}")
-        st.stop()
-
 
 if not openai_api_key:
     st.info("Please add your OpenAI API key to continue.", icon="🗝️")
@@ -82,20 +35,11 @@ else:
         disabled=not uploaded_files,
     )
 
-    system_prompt = """
-    You are a smart data assistant capable of reading multiple CSV files.
-    When asked a question, determine which DataFrame is most relevant.
-    - Do NOT answer from general knowledge.
-    - Answer in plain English.
-    """
-
     if uploaded_files and question:
         agent = open_ai_df_agent(openai_api_key, dataframes)
 
-        final_query = system_prompt + "\n\nQuestion: " + question
+        final_query = SYSTEM_PROMPT + "\n\nQuestion: " + question
 
-        # Generate an answer using the OpenAI API.
-        stream = generate_answer_stream(agent, final_query)
+        stream = invoke_agent(agent, final_query)
 
-        # Stream the response to the app using `st.write_stream`.
         st.write(stream)
