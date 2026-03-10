@@ -3,12 +3,28 @@ import streamlit as st
 from langchain_openai.chat_models import ChatOpenAI
 from langchain_experimental.agents.agent_toolkits import create_pandas_dataframe_agent
 
+def show_title_and_description():
+    st.title("📄 CSV FAQ Agent")
+    st.write(
+        "Upload a CSV file below and ask a question about it – GPT will answer! "
+        "To use this app, you need to provide an OpenAI API key, which you can get [here](https://platform.openai.com/account/api-keys). "
+    )
+
+def dataframe_from_uploaded_files(uploaded_files):
+    dataframes = []
+    if uploaded_files:
+        try:
+            for file in uploaded_files:
+                df = pd.read_csv(file)
+                dataframes.append(df)
+            print(f"\SUCCESS: Loaded '{file}' ({len(df)} rows)")
+        except Exception as e:
+            st.error(f"Error reading CSV files: {e}")
+            st.stop()
+    return dataframes
+
 # Show title and description.
-st.title("📄 CSV FAQ Agent")
-st.write(
-    "Upload a CSV file below and ask a question about it – GPT will answer! "
-    "To use this app, you need to provide an OpenAI API key, which you can get [here](https://platform.openai.com/account/api-keys). "
-)
+show_title_and_description()
 
 # Ask user for their OpenAI API key via `st.text_input`.
 # Alternatively, you can store the API key in `./.streamlit/secrets.toml` and access it
@@ -25,17 +41,7 @@ else:
         accept_multiple_files=True
     )
 
-    dataframes = []
-
-    if uploaded_files:
-        try:
-            for file in uploaded_files:
-                df = pd.read_csv(file)
-                dataframes.append(df)
-            print(f"\SUCCESS: Loaded '{file}' ({len(df)} rows)")
-        except Exception as e:
-            st.error(f"Error reading CSV files: {e}")
-            st.stop()
+    dataframes = dataframe_from_uploaded_files(uploaded_files)
 
     # Ask the user for a question via `st.text_area`.
     question = st.text_area(
@@ -63,8 +69,8 @@ else:
             agent = create_pandas_dataframe_agent(
                 llm,
                 dataframes,
-                verbose=True,
                 agent_type="openai-functions",
+                verbose=True,
                 allow_dangerous_code=True
             )
         except Exception as e:
